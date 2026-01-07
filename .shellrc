@@ -17,3 +17,12 @@ alias xc='xclip -selection clipboard'
 
 # pinentry + terminal match
 export GPG_TTY=$(tty)
+
+# set bluetooth headset as output
+bt() {
+  sink=$(pactl list short sinks | awk '/bluez_output/ {print $2; exit}')
+  pactl set-default-sink "$sink"
+  for i in $(pactl list short sink-inputs | awk '{print $1}'); do
+    pactl move-sink-input "$i" "$sink"
+  done
+}

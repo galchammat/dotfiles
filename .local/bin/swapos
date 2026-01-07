@@ -1,0 +1,44 @@
+mkdir -p ~/.local/bin
+
+cat > ~/.local/bin/swapos <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Must be UEFI
+[[ -d /sys/firmware/efi ]] || { echo "swapos: not a UEFI system"; exit 1; }
+
+# Must have systemd-boot tooling
+command -v bootctl >/dev/null 2>&1 || { echo "swapos: bootctl not found"; exit 1; }
+
+# Find a Windows entry id from bootctl list output
+# (Matches lines like: "id: auto-windows" or "id: <something>")
+win_id="$(bootctl list 2>/dev/null | awk '
+  BEGIN { id=""; is_win=0 }
+  /^[[:space:]]*id:[[:space:]]*/ { id=$2; is_win=0 }
+  /^[[:space:]]*title:[[:space:]]*/ {
+    t=tolower($0)
+    if (t ~ /windows/) is_win=1
+  }
+  /^[[:space:]]*$/ {
+    if (is_win && id != "") { print id; exit }
+  }
+  END {
+    if (is_win && id != "") { print id; exit }
+  }
+')"
+
+if [[ -z "${win_id}" ]]; then
+  echo "swapos: couldn't find a Windows entry via 'bootctl list'"
+  echo "swapos: run 'bootctl list' and check the Windows entry title/id"
+  exit 1
+fi
+
+echo "swapos: next boot -> ${win_id}"
+sudo bootctl set-oneshot "${win_id}"
+
+echo "swapos: rebooting now..."
+systemctl reboot
+EOF
+
+chmod +x ~/.local/bin/swapos
+
