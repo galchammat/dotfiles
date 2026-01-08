@@ -22,3 +22,10 @@ PROMPT='%n@%m:%~$ '
 
 # Add nvim to path
 export PATH="$PATH:/opt/nvim-linux-x86_64/bin"
+export PATH=$PATH:/usr/local/go/bin
+export PATH=/home/yog404/.opencode/bin:$PATH
+
+# Set default editor
+export EDITOR="nvim"
+export VISUAL="nvim"
+
