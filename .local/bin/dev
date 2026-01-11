@@ -30,7 +30,7 @@ fi
 
 # Create session with windows starting in DIR
 tmux new-session -d -s "$SESSION" -n nvim -c "$DIR" "nvim"
-tmux new-window  -t "$SESSION:2" -n shell -c "$DIR"
+tmux new-window -t "$SESSION:2" -n zsh -c "$DIR" zsh
 
 # Focus nvim window by default
 tmux select-window -t "$SESSION:1"
