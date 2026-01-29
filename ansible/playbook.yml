@@ -3,6 +3,7 @@
   vars:
     dot_repo_root: "{{ playbook_dir | dirname }}"
   roles:
+    - { role: nvm, tags: ["nvm"]}
     - { role: packages, tags: ["packages"] }
     - { role: fonts, tags: ["fonts"] }
     - { role: zsh, tags: ["zsh"]}
