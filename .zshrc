@@ -42,3 +42,10 @@ preexec() {
   print -P "%F{242}──── %D{%H:%M:%S} ─────────────────────────────%f"
 }
 
+# SSH Agent - start if not running
+if [ -z "$SSH_AUTH_SOCK" ]; then
+  eval "$(ssh-agent -s)" > /dev/null
+  # Auto-add ed25519 key (prompts for passphrase once per session)
+  [ -f ~/.ssh/id_ed25519 ] && ssh-add ~/.ssh/id_ed25519 2>/dev/null
+fi
+
