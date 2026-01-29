@@ -1,0 +1,158 @@
+# APT PACKAGES
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+---
+# APT PACKAGES
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: yes
+
+- name: Install apt packages
+  apt:
+    name:
+      # Package Managers
+      - flatpak
+      - npm
+      - pipx
+
+      # Window Manager & Desktop
+      - autorandr
+      - dbus-x11
+      - dmenu
+      - feh
+      - i3
+      - picom
+
+      # Terminal & Shell
+      - alacritty
+      - tmux
+      - zsh
+
+      # Development Tools
+      - build-essential
+      - cmake
+      - curl
+      - gettext
+      - git
+      - gh
+      - libgtk-3-dev
+      - libwebkit2gtk-4.1-dev
+      - ninja-build
+      - sqlite3
+      - unzip
+
+      # CLI Utilities
+      - pass
+      - ripgrep
+
+      # Audio
+      - pavucontrol
+      - pipewire
+      - pipewire-pulse
+      - wireplumber
+      - libspa-0.2-bluetooth
+
+      # Clipboard
+      - wl-clipboard
+      - xclip
+
+      # Security & Privacy
+      - gnupg2
+      - openssh-server
+      - rng-tools
+
+      # System Tools
+      - netdata
+      - refind
+
+      # Pop!_OS Specific
+      - libpop-upgrade-gtk
+      - pop-upgrade
+
+    state: present
+  become: yes
+ 
+# FLATPAK SETUP
+- name: Add Flathub repository
+  flatpak_remote:
+    name: flathub
+    state: present
+    flatpakrepo_url: https://flathub.org/repo/flathub.flatpakrepo
+  become: yes
+
+- name: Install Discord via Flatpak
+  flatpak:
+    name: com.discordapp.Discord
+    state: present
+  become: yes
+
+- name: Install Flameshot via Flatpak
+  flatpak:
+    name: org.flameshot.Flameshot
+    state: present
+  become: yes
+
+# EXTERNAL DEB PACKAGES
+- name: Download Cloudflared
+  get_url:
+    url: "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb"
+    dest: "/tmp/cloudflared.deb"
+  become: yes
+
+- name: Install Cloudflared
+  apt:
+    deb: "/tmp/cloudflared.deb"
+    state: present
+  become: yes
+
+- name: Clean up Cloudflared deb
+  file:
+    path: "/tmp/cloudflared.deb"
+    state: absent
+  become: yes
+
+# BUILD NEOVIM FROM SOURCE
+- name: Install Neovim build dependencies
+  apt:
+    name:
+      - ninja-build
+      - gettext
+      - cmake
+      - unzip
+      - curl
+      - build-essential
+    state: present
+  become: yes
+
+- name: Clone Neovim repository
+  git:
+    repo: 'https://github.com/neovim/neovim.git'
+    dest: '/tmp/neovim'
+    version: stable
+    depth: 1
+
+- name: Build Neovim
+  shell: |
+    cd /tmp/neovim
+    make CMAKE_BUILD_TYPE=RelWithDebInfo
+  args:
+    creates: /tmp/neovim/build/bin/nvim
+
+- name: Install Neovim
+  shell: |
+    cd /tmp/neovim
+    make install
+  become: yes
+  args:
+    creates: /usr/local/bin/nvim
+
+- name: Clean up Neovim source
+  file:
+    path: /tmp/neovim
+    state: absent
+
