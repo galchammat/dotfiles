@@ -408,6 +408,9 @@ case $dotfiles_os in
   ubuntu)
     ubuntu_setup
     ;;
+  pop)
+    ubuntu_setup
+    ;;
   arch)
     arch_setup
     ;;
