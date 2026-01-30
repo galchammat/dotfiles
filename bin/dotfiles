@@ -593,6 +593,7 @@ fi
 
 _task_done
 ansible-playbook "$HOME/ansible/playbook.yml" \
+  -i "$HOME/ansible/hosts" \
   --ask-become-pass \
   -e "can_install_packages=true" \
   "${REMAINING_ARGS[@]}"
