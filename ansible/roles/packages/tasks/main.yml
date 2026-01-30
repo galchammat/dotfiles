@@ -80,12 +80,16 @@
   flatpak:
     name: com.discordapp.Discord
     state: present
+    remote: flathub
+    method: system
   become: yes
 
 - name: Install Flameshot via Flatpak
   flatpak:
     name: org.flameshot.Flameshot
     state: present
+    remote: flathub
+    method: system
   become: yes
 
 # EXTERNAL DEB PACKAGES
