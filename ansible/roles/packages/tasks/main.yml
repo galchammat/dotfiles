@@ -59,7 +59,7 @@
 
       # System Tools
       - netdata
-      - refind
+      # refind removed - changes boot manager unexpectedly
 
       # Pop!_OS Specific
       - libpop-upgrade-gtk

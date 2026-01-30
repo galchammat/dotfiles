@@ -27,31 +27,33 @@
     - i3_check.rc == 0
     - xsessions_dir.stat.exists
 
-- name: "i3 | Set i3 as default window manager"
-  ansible.builtin.copy:
-    dest: "{{ ansible_facts['user_dir'] }}/.dmrc"
-    content: |
-      [Desktop]
-      Session=i3
-    mode: '0644'
-  when:
-    - i3_check.rc == 0
-    - xsessions_dir.stat.exists
-    - i3_desktop_file.stat.exists
+# Commented out: Don't automatically set i3 as default
+# Users can manually select i3 from the login screen if they want to use it
+# - name: "i3 | Set i3 as default window manager"
+#   ansible.builtin.copy:
+#     dest: "{{ ansible_facts['user_dir'] }}/.dmrc"
+#     content: |
+#       [Desktop]
+#       Session=i3
+#     mode: '0644'
+#   when:
+#     - i3_check.rc == 0
+#     - xsessions_dir.stat.exists
+#     - i3_desktop_file.stat.exists
 
-- name: "i3 | Set i3 as default for lightdm/gdm (AccountsService)"
-  ansible.builtin.lineinfile:
-    path: "/var/lib/AccountsService/users/{{ ansible_facts['user_id'] }}"
-    regexp: '^XSession='
-    line: 'XSession=i3'
-    create: true
-    mode: '0644'
-  become: true
-  when:
-    - i3_check.rc == 0
-    - xsessions_dir.stat.exists
-    - i3_desktop_file.stat.exists
-    - can_install_packages | default(false)
+# - name: "i3 | Set i3 as default for lightdm/gdm (AccountsService)"
+#   ansible.builtin.lineinfile:
+#     path: "/var/lib/AccountsService/users/{{ ansible_facts['user_id'] }}"
+#     regexp: '^XSession='
+#     line: 'XSession=i3'
+#     create: true
+#     mode: '0644'
+#   become: true
+#   when:
+#     - i3_check.rc == 0
+#     - xsessions_dir.stat.exists
+#     - i3_desktop_file.stat.exists
+#     - can_install_packages | default(false)
 
 - name: "i3 | Report configuration status"
   ansible.builtin.debug:
