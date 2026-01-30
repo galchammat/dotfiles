@@ -104,8 +104,9 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 # Paths
-DOTFILES_LOG="$HOME/.dotfiles.log"
-DOTFILES_DIR="$HOME/.dotfiles"
+DOTFILES_LOG="${TMPDIR:-/tmp}/.dotfiles.log.$$"
+DOTFILES_GIT="$HOME/.dotfiles.git"
+DOTFILES_DIR="$HOME"
 IS_FIRST_RUN="$HOME/.dotfiles_run"
 DOTFILES_VERSION="1.0.0"
 # Spinner PID tracking
@@ -426,17 +427,18 @@ case $dotfiles_os in
     ;;
 esac
 
-if ! [[ -d "$DOTFILES_DIR" ]]; then
+if ! [[ -d "$DOTFILES_GIT" ]]; then
   __task "Downloading dotfiles repository (This may take a minute)"
-  _cmd "git clone --quiet https://github.com/galchammat/.dotfiles.git $DOTFILES_DIR"
+  _cmd "git clone --bare --quiet https://github.com/galchammat/.dotfiles.git $DOTFILES_GIT"
+  __task "Checking out dotfiles to home directory"
+  _cmd "git --git-dir=$DOTFILES_GIT --work-tree=$HOME checkout -f"
+  _cmd "git --git-dir=$DOTFILES_GIT --work-tree=$HOME config --local status.showUntrackedFiles no"
   _task_done
 else
   __task "Updating dotfiles repository"
-  _cmd "git -C $DOTFILES_DIR pull --quiet"
+  _cmd "git --git-dir=$DOTFILES_GIT --work-tree=$HOME pull --quiet"
   _task_done
 fi
-
-pushd "$DOTFILES_DIR" 2>&1 > /dev/null
 
 # Parse arguments for uninstall/delete
 UNINSTALL_ROLE=""
@@ -479,7 +481,7 @@ done
 # Common function to run uninstall script
 run_uninstall_script() {
   local role="$1"
-  local role_dir="$DOTFILES_DIR/roles/$role"
+  local role_dir="$HOME/ansible/roles/$role"
   local uninstall_script="$role_dir/uninstall.sh"
 
   if [[ ! -d "$role_dir" ]]; then
@@ -586,17 +588,14 @@ if [[ -n "$DELETE_ROLE" ]]; then
   else
     echo -e "${YELLOW} [!]  ${CAT_TEXT}Delete cancelled${NC}"
   fi
-  popd 2>&1 > /dev/null
   exit 0
 fi
 
 _task_done
-ansible-playbook "$DOTFILES_DIR/ansible/playbook.yml" \
+ansible-playbook "$HOME/ansible/playbook.yml" \
   --ask-become-pass \
   -e "can_install_packages=true" \
   "${REMAINING_ARGS[@]}"
-
-popd 2>&1 > /dev/null
 
 if ! [[ -f "$IS_FIRST_RUN" ]]; then
   echo ""
