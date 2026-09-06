@@ -696,9 +696,10 @@ fi
 _task_done
 
 # Set the preferred coding agent for `dev` (window 1 of new tmux dev sessions).
-# Writes ~/.config/dev/agent, then offers to install/check the agent's CLI so the
-# user can either have it handled here or manage it themselves. Purely user-level
-# (npm global), so no sudo. Prompt is skipped without a TTY (unattended-safe).
+# Rewrites the marked AGENT= line in ~/.local/bin/dev in place (no separate config
+# file), then offers to install/check the agent's CLI so the user can either have
+# it handled here or manage it themselves. Purely user-level (npm global), no sudo.
+# Prompt is skipped without a TTY (unattended-safe).
 if [[ -n "${DEV_AGENT:-}" ]]; then
   case "$DEV_AGENT" in
     copilot)  agent_pkg="@github/copilot";           agent_bin="copilot"  ;;
@@ -711,10 +712,16 @@ if [[ -n "${DEV_AGENT:-}" ]]; then
       ;;
   esac
 
-  agent_dir="${XDG_CONFIG_HOME:-$HOME/.config}/dev"
-  mkdir -p "$agent_dir"
-  printf '%s\n' "$DEV_AGENT" > "$agent_dir/agent"
-  echo -e "${GREEN} [✓]  ${CAT_TEXT}Preferred dev agent set to '${DEV_AGENT}' (window 1 of new dev sessions)${NC}"
+  dev_script="$HOME/.local/bin/dev"
+  if [[ ! -f "$dev_script" ]] || ! grep -q '# dotfiles:agent' "$dev_script"; then
+    echo -e "${RED} [✗]  ${CAT_TEXT}Could not find the agent marker in ${dev_script}${NC}"
+    exit 1
+  fi
+  # Substitute via temp file + mv for portable in-place editing (no sed -i quirks).
+  agent_tmp="$(mktemp)"
+  sed "s|^AGENT=.*# dotfiles:agent|AGENT=\"${DEV_AGENT}\" # dotfiles:agent|" "$dev_script" > "$agent_tmp" && mv "$agent_tmp" "$dev_script"
+  chmod +x "$dev_script"
+  echo -e "${GREEN} [✓]  ${CAT_TEXT}Preferred dev agent set to '${DEV_AGENT}' in ${dev_script}${NC}"
 
   # Offer to install/check the agent, or let the user handle it. Only prompt when
   # attached to a terminal so unattended invocations just set the preference.
