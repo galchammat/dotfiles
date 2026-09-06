@@ -28,11 +28,32 @@ if tmux has-session -t "$SESSION" 2>/dev/null; then
   fi
 fi
 
-# Create session with windows starting in DIR
-tmux new-session -d -s "$SESSION" -n copilot -c "$DIR" "copilot"
-tmux new-window -t "$SESSION:2" -n nvim -c "$DIR" "nvim"
+# Preferred coding agent for window 1, set via `dotfiles --agent <name>`.
+# Defaults to copilot when unset. Falls back to a plain shell (with a hint) if
+# the configured agent isn't installed, so a new session never dies on startup.
+AGENT_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/dev/agent"
+AGENT="copilot"
+if [[ -r "$AGENT_CONFIG" ]]; then
+  AGENT="$(tr -d '[:space:]' < "$AGENT_CONFIG")"
+  AGENT="${AGENT:-copilot}"
+fi
 
-# Focus nvim window by default
+# Create session with windows starting in DIR:
+#   window 1: the preferred coding agent
+#   window 2: a plain shell
+# Window 2 passes no command, so tmux uses its configured default-command, which
+# .tmux.conf already sets to zsh (falling back to tmux's default where absent) —
+# no need to hardcode the shell here.
+if command -v "$AGENT" >/dev/null 2>&1; then
+  tmux new-session -d -s "$SESSION" -n "$AGENT" -c "$DIR" "$AGENT"
+else
+  # Agent not installed: land in a normal shell with a hint instead of failing.
+  tmux new-session -d -s "$SESSION" -n "$AGENT" -c "$DIR" \
+    "printf '%s\n' \"dev: agent '$AGENT' not found on PATH. Set/install one with: dotfiles --agent <copilot|claude|codex|opencode>\"; exec \"\${SHELL:-sh}\""
+fi
+tmux new-window -t "$SESSION:2" -n zsh -c "$DIR"
+
+# Focus the agent window by default
 tmux select-window -t "$SESSION:1"
 
 # Enter it (switch if already inside tmux to avoid nesting)

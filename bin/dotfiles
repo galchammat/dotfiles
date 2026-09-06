@@ -136,6 +136,7 @@ show_help() {
   echo -e "    ${CAT_GREEN}--delete <role>${NC}         Uninstall and delete a role from dotfiles"
   echo -e "    ${CAT_GREEN}--git${NC}                   Register your SSH key on GitHub (interactive, one-time)"
   echo -e "    ${CAT_GREEN}--tailscale${NC}             Bring up Tailscale and allow tailnet SSH (interactive)"
+  echo -e "    ${CAT_GREEN}--agent <name>${NC}          Set dev's agent: copilot|claude|codex|opencode (offers install)"
   echo -e "    ${CAT_GREEN}--clone-only${NC}            Clone/update the repo only, skip packages and ansible"
   echo -e "    ${CAT_GREEN}-v, -vv, -vvv${NC}           Verbose mode (passed to ansible-playbook)"
   echo ""
@@ -160,6 +161,9 @@ show_help() {
   echo ""
   echo -e "    ${CAT_SUBTEXT1}# Bring up Tailscale, then verify firewalld accepts tailnet SSH${NC}"
   echo "    dotfiles --tailscale"
+  echo ""
+  echo -e "    ${CAT_SUBTEXT1}# Choose the agent that opens in window 1 of 'dev' sessions${NC}"
+  echo "    dotfiles --agent claude"
   echo ""
   echo -e "${CAT_BLUE}ANSIBLE ARGUMENTS:${NC}"
   echo "    All arguments not recognized by dotfiles are passed to ansible-playbook."
@@ -561,6 +565,14 @@ while [[ $# -gt 0 ]]; do
       TAILSCALE_SETUP=true
       shift
       ;;
+    --agent)
+      if [[ -z "${2:-}" || "$2" == -* ]]; then
+        echo -e "${RED} [✗]  ${CAT_TEXT}Error: --agent requires a value (copilot|claude|codex|opencode)${NC}"
+        exit 1
+      fi
+      DEV_AGENT="$2"
+      shift 2
+      ;;
     *)
       REMAINING_ARGS+=("$1")
       shift
@@ -682,6 +694,56 @@ if [[ -n "$DELETE_ROLE" ]]; then
 fi
 
 _task_done
+
+# Set the preferred coding agent for `dev` (window 1 of new tmux dev sessions).
+# Writes ~/.config/dev/agent, then offers to install/check the agent's CLI so the
+# user can either have it handled here or manage it themselves. Purely user-level
+# (npm global), so no sudo. Prompt is skipped without a TTY (unattended-safe).
+if [[ -n "${DEV_AGENT:-}" ]]; then
+  case "$DEV_AGENT" in
+    copilot)  agent_pkg="@github/copilot";           agent_bin="copilot"  ;;
+    claude)   agent_pkg="@anthropic-ai/claude-code"; agent_bin="claude"   ;;
+    codex)    agent_pkg="@openai/codex";             agent_bin="codex"    ;;
+    opencode) agent_pkg="opencode-ai";               agent_bin="opencode" ;;
+    *)
+      echo -e "${RED} [✗]  ${CAT_TEXT}Unknown agent '${DEV_AGENT}'. Choose: copilot, claude, codex, opencode${NC}"
+      exit 1
+      ;;
+  esac
+
+  agent_dir="${XDG_CONFIG_HOME:-$HOME/.config}/dev"
+  mkdir -p "$agent_dir"
+  printf '%s\n' "$DEV_AGENT" > "$agent_dir/agent"
+  echo -e "${GREEN} [✓]  ${CAT_TEXT}Preferred dev agent set to '${DEV_AGENT}' (window 1 of new dev sessions)${NC}"
+
+  # Offer to install/check the agent, or let the user handle it. Only prompt when
+  # attached to a terminal so unattended invocations just set the preference.
+  do_install=""
+  if [[ -t 0 ]]; then
+    read -r -p "$(echo -e "${CAT_TEAL}Install/check ${DEV_AGENT} now? Choose 'n' to handle it yourself [y/N]: ${NC}")" reply
+    [[ "$reply" =~ ^[Yy]$ ]] && do_install="yes"
+  else
+    echo -e "${CAT_SUBTEXT1}No terminal detected; skipping install. Install it yourself with: npm install -g ${agent_pkg}${NC}"
+  fi
+
+  if [[ "$do_install" == "yes" ]]; then
+    if command -v "$agent_bin" >/dev/null 2>&1; then
+      echo -e "${GREEN} [✓]  ${CAT_TEXT}${agent_bin} is already installed: $(command -v "$agent_bin")${NC}"
+    elif command -v npm >/dev/null 2>&1; then
+      echo -e "${CAT_SUBTEXT1}Installing ${agent_pkg} via npm...${NC}"
+      if npm install -g "$agent_pkg"; then
+        echo -e "${GREEN} [✓]  ${CAT_TEXT}Installed ${DEV_AGENT} (${agent_bin})${NC}"
+      else
+        echo -e "${RED} [✗]  ${CAT_TEXT}Install failed. Try manually: npm install -g ${agent_pkg}${NC}"
+        exit 1
+      fi
+    else
+      echo -e "${RED} [✗]  ${CAT_TEXT}npm not found. Run the full dotfiles first (nvm role), then: npm install -g ${agent_pkg}${NC}"
+      exit 1
+    fi
+  fi
+  exit 0
+fi
 
 # One-time, interactive GitHub account setup: browser device-flow login, then
 # upload the ed25519 key as both an authentication and a signing key. The role
