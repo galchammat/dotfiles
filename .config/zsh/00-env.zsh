@@ -5,6 +5,7 @@ path=(
   /home/yog404/.opencode/bin
   $HOME/go/bin
   $HOME/.local/bin
+  $HOME/bin
   $path
 )
 
